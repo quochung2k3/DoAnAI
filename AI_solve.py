@@ -2,6 +2,7 @@ import pygame
 import time
 import algo as algomaze
 import home_game
+import history
 
 def main():
     pygame.init()
@@ -18,6 +19,7 @@ def main():
     font = pygame.font.Font(None, 36)
     open_combobox = 0
     algo = ""
+    lines = '-'*100
 
     def load_image(filename,CELL_SIZE_w,CELL_SIZE_h):
         image = pygame.image.load(filename)
@@ -126,7 +128,8 @@ def main():
         draw_button(20, 400, 125, 50, "Easy", WHITE, BLACK)
         draw_button(160, 400, 125, 50, "Medium", WHITE, BLACK)
         draw_button(300, 400, 125, 50, "Hard", WHITE, BLACK)
-        draw_button(245, 240, 175, 50 ,f"Speed: x{speed}", WHITE, RED)
+        draw_button(245, 235, 175, 50 ,f"Speed: x{speed}", WHITE, RED)
+        draw_button(245, 310, 175, 50, "History", WHITE, GREEN)
         button_surface.blit(reset_image,(245, 10))
         button_surface.blit(solve_image,(245, 85))
         button_surface.blit(exit_image,(245, 160))
@@ -143,8 +146,23 @@ def main():
     def draw_solve(surface, path, visited, CELL_SIZE_w, CELL_SIZE_h, speed):
         count = 0
         state = 0 
+        if(level == 1):
+            text_level = 'Easy'
+        elif (level == 2):
+            text_level = 'Medium'
+        elif (level == 3):
+            text_level = 'Hard'
+        text = f'Algorithm: {algo}   Level: {text_level}   Round: {current_round}   Speed:x{speed}'
+        write_his(lines)
+        write_his(text)
+        write_his(f'Step: {len(path)-1}')
+        write_his(f'State: {len(visited)}')
+
+        start_solve = pygame.time.get_ticks()
         for row, col in visited:
+            state += 1
             if(row, col) == start or (row, col) == end:
+                draw_state(state)
                 continue
             surface.blit(visited_image, (col * CELL_SIZE_w, row * CELL_SIZE_h, CELL_SIZE_w, CELL_SIZE_h))
             time.sleep(1/(20*speed))
@@ -152,20 +170,19 @@ def main():
             pygame.display.update()
             draw_time(surface_time)
             draw_state(state)
-            state += 1
         if path:
             print(path)
             for row, col in path:
+                count +=1
                 if(row, col) == start or (row, col) == end:
                     continue
                 surface.blit(return_image, (col * CELL_SIZE_w, row * CELL_SIZE_h, CELL_SIZE_w, CELL_SIZE_h))
-
                 time.sleep(2/(20*speed))
                 screen.blit(surface_maze, (50,75))
                 pygame.display.update() 
                 draw_time(surface_time)
                 draw_count(count)
-                count += 1
+
             previous_r, previous_c = start  
             for row, col in path:
                 if(row, col) == start:
@@ -179,6 +196,13 @@ def main():
                 pygame.display.update()
         else:
             print("Can't Solve")
+        end_solve = pygame.time.get_ticks()
+        time_sovle = end_solve - start_solve
+        seconds = int((time_sovle / 1000) % 60)
+        milliseconds = int((time_sovle % 1000) / 10)  
+        time_str = f"Time: {seconds:02d}.{milliseconds:02d}s"
+        write_his(time_str)
+
     def draw_count(count):
         surface_count.fill(BLACK)
         str_count = f"Count: {count}"
@@ -234,6 +258,7 @@ def main():
     background1_image = load_image('background1.jpg', WIDTH, HEIGHT)
     screen.blit(background_image,(0,0))
 
+    button_history = draw_button(245, 310, 175, 50, "Exit", WHITE, GREEN)
     button_rs = draw_button(245, 10, 175, 50, "Reset", WHITE, RED)
     button_sovle = draw_button(245, 85, 175, 50, "Solve", WHITE, BLUE)
     button_exit = draw_button(245, 160, 175, 50, "Exit", WHITE, GREEN)
@@ -241,7 +266,7 @@ def main():
     button_easy = draw_button(20, 400, 125, 50, "Easy", WHITE, BLACK)
     button_medium = draw_button(160, 400, 125, 50, "Medium", WHITE, BLACK)
     button_hard = draw_button(300, 400, 125, 50, "Hard", WHITE, BLACK)
-    button_speed = draw_button(245, 240, 175, 50 ,f"Speed: x{speed}", WHITE, RED)
+    button_speed = draw_button(245, 235, 175, 50 ,f"Speed: x{speed}", WHITE, RED)
     #
     path = visited = []
     surface_maze.blit(background1_image,(0,0))
@@ -257,7 +282,10 @@ def main():
         draw_maze(surface_maze, maze, CELL_SIZE_w, CELL_SIZE_h, border_image, wall_image, start_image, end_image)
         return surface_maze, maze, start, end, CELL_SIZE_w, CELL_SIZE_h, WIDTH, HEIGHT
     
-
+    def write_his(text):
+        with open("history.txt", "a") as file:
+            file.writelines(text)
+            file.writelines('\n')
     
 
 
@@ -289,14 +317,15 @@ def main():
                         draw_header(text_level, text_round)
                         draw_text_algo("Algo")
                         end_game = True
-                    #if button_rs.collidepoint(mouse_pos):
-                    #    print('rs1')
-                    #    end_game = True
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1: 
                     mouse_pos = pygame.mouse.get_pos()
                     if button_exit.collidepoint(mouse_pos):
+                        with open("history.txt","w") as file:
+                            file.writelines("")
                         home_game.home_screen()
+                    if button_history.collidepoint(mouse_pos):
+                        history.main()
                     if button_easy.collidepoint(mouse_pos):
                         text_level = "Level: Easy"
                         surface_maze, maze, start, end, CELL_SIZE_w, CELL_SIZE_h, WIDTH, HEIGHT = load_maze("level11.txt",return_image, visited_image, path_image, wall_image, start_image, end_image, border_image, background_image)
@@ -393,12 +422,12 @@ def main():
                             draw_text_algo("Algo")
                     if open_combobox == 1:
                         if button_DFS.collidepoint(mouse_pos):
-                            path, visited = algomaze.dfs_search(maze,start,end)                  
+                            path, visited = algomaze.dfs_search(maze,start,end)
                             draw_text_algo("DFS")
                             algo = "DFS"
                             open_combobox = 0
                         if button_BFS.collidepoint(mouse_pos):
-                            path, visited = algomaze.bfs_search(maze,start,end)
+                            path, visited = algomaze.bfs_search(maze,start,end)                            
                             draw_text_algo("BFS")
                             algo = "BFS"
                             open_combobox = 0
@@ -408,7 +437,7 @@ def main():
                             algo = "UCS"
                             open_combobox = 0
                         if button_A.collidepoint(mouse_pos):
-                            path, visited = algomaze.a_star_search(maze,start,end)
+                            path, visited = algomaze.a_star_search(maze,start,end)                           
                             draw_text_algo("A*")
                             algo = "A*"
                             open_combobox = 0
@@ -422,8 +451,7 @@ def main():
                             draw_text_algo("Greedy")
                             open_combobox = 0
                         if button_7.collidepoint(mouse_pos):
-                            path, visited = algomaze.ids_search(maze,start,end, 100)
-                            print(path, visited)
+                            path, visited = algomaze.ids_search(maze,start,end,100)
                             draw_text_algo("IDS")
                             open_combobox = 0
         pygame.display.update()
